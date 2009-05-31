@@ -54,15 +54,56 @@ function xsvn_get_commit_files($tx, $repo) {
   return $items;
 }
 
+/**
+ * Fill an item array suitable for versioncontrol_has_write_access from an
+ * item's path and status.
+ *
+ * @param path
+ *   The path of the item.
+ *
+ * @param status
+ *   The status of the item, as returned from "svnlook changed".
+ */
+function xsvn_get_operation_item($path, $status) {
+  $item['path'] = $path;
 
-function xsvn_get_operation_item($filename, $dir, $xsvn['cwd']) {
+  // The item has been deleted.
+  if (preg_match("@D@", $status)) {
+    // A trailing slash means the item is a directory
+    $item['type'] = (preg_match("@/$@", $path)) ?
+      VERSIONCONTROL_ITEM_DIRECTORY_DELETED : VERSIONCONTROL_ITEM_FILE_DELETED;
+  } else {
+    $item['type'] = (preg_match("@/$@", $path)) ?
+      VERSIONCONTROL_ITEM_DIRECTORY : VERSIONCONTROL_ITEM_FILE;
+  }
 
-    $item = array(
-    'type' => VERSIONCONTROL_ITEM_FILE,
-    'path' => $repository_path,
-    'source_items' => array(),
-  );
+  switch ($status) {
+    case "A":
+      $item['action'] = VERSIONCONTROL_ACTION_ADDED;
+      break;
+    case "D":
+      $item['action'] = VERSIONCONTROL_ACTION_DELETED;
+      break;
+    case "U":
+      $item['action'] = VERSIONCONTROL_ACTION_MODIFIED;
+      break;
+    case "_U":
+      // Item properties have changed, but nothing else.
+      $item['action'] = VERSIONCONTROL_ACTION_OTHER;
+      break;
+    case "UU":
+      // Both properties and contents have changed.
+      // TODO: Should this count as MODIFIED or OTHER, since it's really both?
+      $item['action'] = VERSIONCONTROL_ACTION_MODIFIED;
+      break;
+    default:
+      fwrite(STDERR, "Error: failed to read the status of the commit.\n");
+      exit(4)
+  }
+
+  return $item;
 }
+
 
 /**
  * The main function of the hook.
@@ -91,7 +132,7 @@ function xsvn_init($argc, $argv) {
   $repo        = array_shift($argv); // argv[2]
   $tx          = array_shift($argv); // argv[3]
   $username    = xsvn_get_commit_author($tx, $repo);
-  $filenames   = xsvn_get_commit_files($tx, $repo);
+  $item_paths  = xsvn_get_commit_files($tx, $repo);
 
   // Load the configuration file and bootstrap Drupal.
   if (!file_exists($config_file)) {
@@ -116,9 +157,9 @@ function xsvn_init($argc, $argv) {
       'labels' => array(), // TODO: don't support labels yet.
     );
 
-    $operation_items = array();
-    foreach ($filenames as $filename) {
-      list($path, $item) = xsvn_get_operation_item($filename, $dir, $xsvn['cwd']);
+    // Set the $operation_items array from the item path and status.
+    foreach ($item_paths as $path => $status) {
+      $item = xsvn_get_operation_item($path, $status);
       $operation_items[$path] = $item;
     }
     $access = versioncontrol_has_write_access($operation, $operation_items);
