@@ -98,7 +98,7 @@ function xsvn_get_operation_item($path, $status) {
       break;
     default:
       fwrite(STDERR, "Error: failed to read the status of the commit.\n");
-      exit(4)
+      exit(4);
   }
 
   return $item;
@@ -171,3 +171,4 @@ function xsvn_init($argc, $argv) {
     }
   }
 }
+xsvn_init($argc, $argv);
