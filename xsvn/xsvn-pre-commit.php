@@ -24,7 +24,7 @@ function xsvn_help($cli, $output_stream) {
  *   The repository in which to look for the author.
  */
 function xsvn_get_commit_author($tx, $repo) {
-  return shell_exec("svnlook author -t $tx $repo");
+  return trim(shell_exec("svnlook author -t $tx $repo"));
 }
 
 /**
@@ -44,7 +44,7 @@ function xsvn_get_commit_author($tx, $repo) {
  */
 function xsvn_get_commit_files($tx, $repo) {
   $str = shell_exec("svnlook changed -t $tx $repo");
-  $lines = explode($str, "\n", -1); // SVN returns a newline at the end.
+  $lines = preg_split("/\n/", $str, -1, PREG_SPLIT_NO_EMPTY);
 
   // Separate the status from the path names.
   foreach ($lines as $line) {
