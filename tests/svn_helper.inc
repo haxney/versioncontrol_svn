@@ -53,7 +53,7 @@ class SvnHelper extends DrupalWebTestCase {
   protected $pre_commit_hook;
 
   /**
-   * Full path to the source php pre-commit hook.
+   * Full path to the source xsvn-pre-commit.php hook.
    */
   protected $pre_commit_file_src;
 
@@ -68,7 +68,7 @@ class SvnHelper extends DrupalWebTestCase {
   protected $xsvn_dir;
 
   /**
-   * Destination of the pre-commit php file.
+   * Destination of the xsvn-pre-commit.php file.
    */
   protected $pre_commit_file_dst;
 
@@ -91,12 +91,14 @@ class SvnHelper extends DrupalWebTestCase {
   function setUp() {
     parent::setUp('versioncontrol', 'versioncontrol_svn');
 
+    $this->old_wd = getcwd();
     $this->file_path = realpath(file_directory_path());
     $this->repo_path = $this->file_path . '/svnrepo';
     $this->repo_url = 'file://' . $this->file_path . '/svnrepo';
     $this->wc_path = $this->file_path . '/svnwc';
-    $this->old_wd = getcwd();
     $this->base_path = dirname($_SERVER['SCRIPT_FILENAME']);
+
+    // TODO: Make this more portable
     $this->server_user = $_ENV['APACHE_RUN_USER'];
 
     $this->config_ext = "\$xsvn['drupal_path'] = '" . $this->base_path . "';\n";
@@ -111,7 +113,7 @@ class SvnHelper extends DrupalWebTestCase {
     $this->pre_commit_file_dst = $this->xsvn_dir . '/xsvn-pre-commit.php';
     $this->xsvn_config_dst = $this->xsvn_dir . '/xsvn-config.php';
 
-    $this->pre_commit_text = "#!/bin/sh\n".
+    $this->pre_commit_text = "#!/bin/sh\n" .// "export XDEBUG_CONFIG=\"remote_port=9001\"\n" .
       "php $this->pre_commit_file_dst $this->xsvn_config_dst " .
       '$@';
 
@@ -130,9 +132,8 @@ class SvnHelper extends DrupalWebTestCase {
     // Copy the xsvn files
     copy($this->pre_commit_file_src, $this->pre_commit_file_dst);
     copy($this->xsvn_config_src, $this->xsvn_config_dst);
-    chmod($this->pre_commit_file_dst, 0755);
 
-    // Write the correct base_path to the config file.
+    // Append simpletest-specific info to the config file.
     $file = fopen($this->xsvn_config_dst, 'a');
     fwrite($file, $this->config_ext);
     fclose($file);
