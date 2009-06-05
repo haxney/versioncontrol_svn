@@ -299,3 +299,38 @@ function _versioncontrol_svn_update_repository(&$repository) {
   include_once(drupal_get_path('module', 'versioncontrol_svn') .'/versioncontrol_svn.log.inc');
   return _versioncontrol_svn_log_update_repository($repository);
 }
+
+/**
+ * Implementation of hook_versioncontrol_is_account_authorized():
+ * Let the Version Control API know whether the given VCS account is authorized
+ * or not.
+ *
+ * If the user $uid has an account for the given repository, then they are
+ * considered authorized; no further checks are made.
+ *
+ * @param $repository
+ *   The repository where the status should be checked. (Note that the user's
+ *   authorization status may differ for each repository.)
+ * @param $uid
+ *   The user id of the checked account.
+ *
+ * @return
+ *   TRUE if the account is authorized, or FALSE if it's not.
+ *
+ * @ingroup Accounts
+ * @ingroup Authorization
+ * @ingroup Target audience: Authorization control modules
+ */
+function versioncontrol_svn_versioncontrol_is_account_authorized($repository, $uid) {
+  $result = versioncontrol_get_accounts(array(
+              'uids' => array($uid),
+              'repo_ids' => array($repository['repo_id'])
+            ),
+            TRUE);
+
+  if (empty($result)) {
+    return FALSE;
+  }
+
+  return TRUE;
+}
