@@ -1,9 +1,20 @@
 <?php
 // $Id$
 
+/**
+ * @file
+ * Test the Subversion pre-commit hook integration.
+ *
+ * The pre-commit hook allows restriction of commit access based on whether the
+ * user has an account with the particular Subversion repository to which she is
+ * trying to commit.
+ */
+
+
 require_once(drupal_get_path('module', 'versioncontrol_svn') .'/tests/svn_helper.inc');
 
 class SvnPreCommitTestCase extends SvnHelper {
+
   /**
    * Implementation of getInfo().
    */
@@ -19,7 +30,7 @@ class SvnPreCommitTestCase extends SvnHelper {
    * Test printing of help message when incorrect number arguments is given.
    */
   function testInvalidArgHelp() {
-    $result = shell_exec($this->pre_commit_hook . ' 2>&1');
+    $result = shell_exec($this->pre_commit_hook .' 2>&1');
     $usage_text = t('Usage: php !cli <config file> REPO_PATH TX_NAME',
                   array('!cli' => $this->pre_commit_file_dst));
 
@@ -36,7 +47,7 @@ class SvnPreCommitTestCase extends SvnHelper {
    * May be overly dependent on the exact strings returned by Subversion.
    */
   function testDenyUnauthorized() {
-    $result = $this->WcCheckOut();
+    $result = $this->wcCheckOut();
     $this->assertTrue(
       is_int(strpos($result, "Checked out revision 0.\n")),
       t('Check out the initial svn version.'),
@@ -45,7 +56,7 @@ class SvnPreCommitTestCase extends SvnHelper {
 
     $path = $this->randomName();
     $contents = $this->randomName();
-    $result = $this->WcAddSampleFile($path, $contents);
+    $result = $this->wcAddSampleFile($path, $contents);
     $this->assertTrue(
       is_int(strpos($result, "A         $path\n")),
       t('Add test file to the repository.'),
@@ -54,7 +65,7 @@ class SvnPreCommitTestCase extends SvnHelper {
 
     // Attempt to commit, but fail because the system user does not have access.
     $message = $this->randomName();
-    $result = $this->WcCommit($message);
+    $result = $this->wcCommit($message);
     $error_msg = t(
       "** ERROR: Version Control API cannot determine a repository\n".
       '** for the !commit-branch-or-tag information given by the VCS backend.',
@@ -77,7 +88,7 @@ class SvnPreCommitTestCase extends SvnHelper {
     $edit['root'] = $this->repo_url;
     $this->drupalPost($menu_path, $edit, t('Save repository'));
 
-    $result = $this->WcCommit();
+    $result = $this->wcCommit();
     $error_msg = t('** ERROR: !user does not have commit access to this repository.',
                  array('!user' => $this->server_user));
 
@@ -91,7 +102,7 @@ class SvnPreCommitTestCase extends SvnHelper {
   /**
    * Test committing by an authorized user.
    */
-  function testAuthorizedCommit () {
+  function testAuthorizedCommit() {
     $user = $this->drupalCreateUser(array('administer version control systems'));
     $this->drupalLogin($user);
 
@@ -101,10 +112,10 @@ class SvnPreCommitTestCase extends SvnHelper {
     $edit['root'] = $this->repo_url;
     $this->drupalPost($menu_path, $edit, t('Save repository'));
 
-    $result = $this->WcCheckOut();
+    $result = $this->wcCheckOut();
     $path = $this->randomName();
     $content = $this->randomName();
-    $result = $this->WcAddSampleFile($path, $content);
+    $result = $this->wcAddSampleFile($path, $content);
 
     $repo = array_shift(versioncontrol_get_repositories(array(
                    'names' => array($edit['repo_name']))));
@@ -118,7 +129,7 @@ class SvnPreCommitTestCase extends SvnHelper {
 
     // TODO: should be able to commit with only 'use version control systems'
     $message = $this->randomName();
-    $result = $this->WcCommit($message);
+    $result = $this->wcCommit($message);
     $this->assertTrue(
       preg_match('/Committed revision [0-9]+\./', $result),
       t('Successfully committed after authorization.'),

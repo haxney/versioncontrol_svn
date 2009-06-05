@@ -2,8 +2,7 @@
 // $Id$
 
 /**
- * @file xsvn-pre-commit.php
- *
+ * @file
  * Provides access checking for 'svn commit' commands.
  *
  * Copyright 2009 by Daniel Hackney ('chrono325', http://drupal.org/user/384635)
@@ -74,7 +73,8 @@ function xsvn_get_operation_item($path, $status) {
     // A trailing slash means the item is a directory
     $item['type'] = (preg_match('@/$@', $path)) ?
       VERSIONCONTROL_ITEM_DIRECTORY_DELETED : VERSIONCONTROL_ITEM_FILE_DELETED;
-  } else {
+  }
+  else {
     $item['type'] = (preg_match('@/$@', $path)) ?
       VERSIONCONTROL_ITEM_DIRECTORY : VERSIONCONTROL_ITEM_FILE;
   }
@@ -99,7 +99,7 @@ function xsvn_get_operation_item($path, $status) {
       $item['action'] = VERSIONCONTROL_ACTION_MODIFIED;
       break;
     default:
-      fwrite(STDERR, t('Error: failed to read the status of the commit.') . "\n");
+      fwrite(STDERR, t('Error: failed to read the status of the commit.') ."\n");
       exit(4);
   }
   return $item;
@@ -137,7 +137,7 @@ function xsvn_init($argc, $argv) {
 
   // Load the configuration file and bootstrap Drupal.
   if (!file_exists($config_file)) {
-    fwrite(STDERR, t('Error: failed to load configuration file.') . "\n");
+    fwrite(STDERR, t('Error: failed to load configuration file.') ."\n");
     exit(4);
   }
   include_once $config_file;
@@ -167,7 +167,7 @@ function xsvn_init($argc, $argv) {
 
     // Fail and print out error messages if commit access has been denied.
     if (!$access) {
-      fwrite(STDERR, implode("\n\n", versioncontrol_get_access_errors()) . "\n\n");
+      fwrite(STDERR, implode("\n\n", versioncontrol_get_access_errors()) ."\n\n");
       exit(6);
     }
   }
