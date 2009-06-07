@@ -1,0 +1,82 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Test the Subversion post-commit hook integration.
+ *
+ * The post-commit hook records commits into the database once an operation has
+ * finished.
+ */
+
+require_once(drupal_get_path('module', 'versioncontrol_svn') .'/tests/svn_helper.inc');
+
+class SvnPostCommitTestCase extends SvnHelper {
+
+  /**
+   * Implementation of getInfo().
+   */
+  public static function getInfo() {
+    return array(
+      'name' => t('versioncontrol_svn post-commit hook'),
+      'description' => t('Test the functionality of the SVN post-commit hook'),
+      'group' => t('Version Control'),
+    );
+  }
+
+  /**
+   * Test the printing of usage information when incorrect number of arguments
+   * is given.
+   */
+  function testInvalidArgHelp() {
+    $result = shell_exec($this->hooks['post-commit'] .' 2>&1');
+    $usage_text = t('Usage: php !cli <config file> REPO_PATH REV_NUM',
+                  array('!cli' => $this->xsvn_files['post-commit']));
+
+    $this->assertTrue(
+      is_int(strpos($result, $usage_text)),
+      t('Print help text when incorrect number of arguments is given.'),
+      t('Shell Interaction')
+    );
+  }
+
+  function testInvalidRepo() {
+    require_once $this->xsvn_files['config'];
+    $this->wcCheckout();
+
+    $path = $this->randomName();
+    $contents = $this->randomName();
+    $message = $this->randomName();
+
+    $this->wcAddSampleFile($path, $contents);
+
+    $user = $this->drupalCreateUser(array('administer version control systems'));
+    $this->drupalLogin($user);
+
+    // Create the repository, using the hook-based update_method.
+    $menu_path = 'admin/project/versioncontrol-repositories/add-svn';
+    $edit = array();
+    $edit['repo_name'] = $this->randomName();
+    $edit['root'] = $this->repo_url;
+    $edit['update_method'] = VERSIONCONTROL_SVN_UPDATE_XSVN;
+    $this->drupalPost($menu_path, $edit, t('Save repository'));
+
+    $result = $this->wcCommit($message);
+
+    $error_pattern = '/Warning: post-commit hook failed \\(exit code (\d+)\\) with output:/';
+    assertTrue(
+      preg_match($error_pattern, $result, $matches),
+      'post-commit hook fails when no user account exists with the repository.',
+      'post-commit hook'
+    );
+
+    $error_code = $matches[1];
+    $this->assertEqual(
+      $error_code,
+      VERSIONCONTROL_SVN_ERROR_NO_ACCOUNT,
+      'Exit with error code when user does not have an account.',
+      'post-commit hook'
+    );
+
+  }
+}
