@@ -10,7 +10,6 @@
  * trying to commit.
  */
 
-
 require_once(drupal_get_path('module', 'versioncontrol_svn') .'/tests/svn_helper.inc');
 
 class SvnPreCommitTestCase extends SvnHelper {
@@ -21,7 +20,7 @@ class SvnPreCommitTestCase extends SvnHelper {
   public static function getInfo() {
     return array(
       'name' => t('versioncontrol_svn pre-commit hook'),
-      'description' => t('Test the functionality of the SVN hooks'),
+      'description' => t('Test the functionality of the SVN pre-commit hook'),
       'group' => t('Version Control'),
     );
   }
