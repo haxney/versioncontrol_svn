@@ -39,7 +39,13 @@ class SvnHelper extends DrupalWebTestCase {
   protected $repo = array();
 
   /**
-   * Array of subversion hook names and their absolute paths, of the form:
+   * Array of hook info. The key is the hook name and the value is an array with
+   * the following elements:
+   *
+   *   - src - The source of the xsvn script implementing the hook.
+   *   - dst - The destination path of the xsvn script.
+   *   - svn_file - The path of the svn hook which calls the xsvn script.
+   *   - text - The source of the svn hook.
    *
    *   array(
    *     'name' => 'path',
@@ -48,33 +54,9 @@ class SvnHelper extends DrupalWebTestCase {
   protected $hooks = array();
 
   /**
-   * Array of destination xsvn files, such as xsvn-config.php and
-   * xsvn-pre-commit.php. Keys are the name of the file, and value is the
-   * absolute path, such as:
-   *
-   *   array(
-   *     'pre-commit' => '/path/to/xsvn-pre-commit.php',
-   *   );
+   * An array of the hooks provided.
    */
-  protected $xsvn_files = array();
-
-  /**
-   * Array of source xsvn files, such as xsvn-config.php and
-   * xsvn-pre-commit.php. Keys are the name of the file, and value is the
-   * absolute path, such as:
-   *
-   *   array(
-   *     'pre-commit' => '/path/to/src/xsvn-pre-commit.php',
-   *   );
-   */
-  protected $xsvn_src = array();
-
-
-  /**
-   * An array of the texts of the svn hooks. Each SVN hook is a shell script
-   * which calls the xsvn-*.php hook with the appropriate arguments.
-   */
-  protected $hook_text = array();
+  protected $hook_names = array('pre-commit', 'post-commit');
 
   /**
    * Help set up a test to use Subversion.
@@ -82,30 +64,52 @@ class SvnHelper extends DrupalWebTestCase {
   function setUp() {
     parent::setUp('versioncontrol', 'versioncontrol_svn');
 
-    $this->old_wd                        = getcwd();
-    $this->file_path                     = realpath(file_directory_path());
-    $this->repo['path']                  = $this->file_path .'/svnrepo';
-    $this->repo['url']                   = 'file://'. $this->file_path .'/svnrepo';
-    $this->repo['wc_path']               = $this->file_path .'/svnwc';
-    $this->repo['created']               = FALSE;
-    $this->base_path                     = dirname($_SERVER['SCRIPT_FILENAME']);
+    $this->old_wd          = getcwd();
+    $this->file_path       = realpath(file_directory_path());
+    $this->repo['path']    = $this->file_path .'/svnrepo';
+    $this->repo['xsvn']    = $this->repo['path'] . '/hooks/xsvn';
+    $this->repo['url']     = 'file://'. $this->file_path .'/svnrepo';
+    $this->repo['wc_path'] = $this->file_path .'/svnwc';
+    $this->repo['created'] = FALSE;
+    $this->base_path       = dirname($_SERVER['SCRIPT_FILENAME']);
+    $this->server_user     = $_ENV['APACHE_RUN_USER']; // TODO: Make this more portable
+    $this->module_source   = realpath(drupal_get_path('module', 'versioncontrol_svn'));
 
-    // TODO: Make this more portable
-    $this->server_user                   = $_ENV['APACHE_RUN_USER'];
+    // The config 'hook' is special, so fill it in separately.
+    $this->hooks['config']['src'] = $this->module_source .'/xsvn/xsvn-config.php';
+    $this->hooks['config']['dst'] = $this->repo['xsvn'] .'/xsvn-config.php';
+    $format = "\$xsvn['drupal_path'] = '%s';\n".
+              "\$GLOBALS['simpletest_db_prefix'] = '%s';";
 
-    $this->hook_text['config']           = "\$xsvn['drupal_path'] = '". $this->base_path ."';\n";
-    $this->hook_text['config']          .= "\$GLOBALS['simpletest_db_prefix'] = '". $GLOBALS['db_prefix'] ."';";
-    $this->hooks['pre-commit']           = $this->repo['path'] .'/hooks/pre-commit';
-    $module_source                       = realpath(drupal_get_path('module', 'versioncontrol_svn'));
-    $this->xsvn_src['config']            = $module_source .'/xsvn/xsvn-config.php';
-    $this->xsvn_src['pre-commit']        = $module_source .'/xsvn/xsvn-pre-commit.php';
-    $this->xsvn_files['dir']             = $this->repo['path'] .'/hooks/xsvn';
-    $this->xsvn_files['pre-commit']      = $this->xsvn_files['dir'] .'/xsvn-pre-commit.php';
-    $this->xsvn_files['config']          = $this->xsvn_files['dir'] .'/xsvn-config.php';
+    $this->hooks['config']['text'] = sprintf($format, $this->base_path, $GLOBALS['db_prefix']);
 
-    $this->hook_text['pre-commit']       = "#!/bin/sh\n". "export XDEBUG_CONFIG='remote_port=9001'\n".
-      "php ". $this->xsvn_files['pre-commit'] .' '. $this->xsvn_files['config'] .
-      ' $@';
+    // Fill in each of the hooks.
+    foreach ($this->hook_names as $hook) {
+      $this->_fillHook($hook);
+    }
+  }
+
+  /**
+   * Fills in the information array for a single hook.
+   *
+   * @param $hook
+   *   The name of the hook for which to fill in the info.
+   */
+  protected function _fillHook($hook) {
+    $this->hooks[$hook] = array(
+      'svn_file' => sprintf('%s/hooks/%s',$this->repo['path'], $hook),
+      'src'      => sprintf('%s/xsvn/xsvn-%s.php', $this->module_source, $hook),
+      'dst'      => sprintf('%s/xsvn-%s.php', $this->repo['xsvn'], $hook),
+    );
+
+    $dst = $this->hooks[$hook]['dst'];
+    $config = $this->hooks['config']['dst'];
+    $format = "#!/bin/sh\n".
+              "export XDEBUG_CONFIG='remote_port=9001'\n".
+              'php %s %s $@';
+    $this->hooks[$hook]['text'] = sprintf($format, $dst, $config);
+
+    return;
   }
 
   /**
@@ -121,14 +125,14 @@ class SvnHelper extends DrupalWebTestCase {
    */
   function initRepo() {
     shell_exec('svnadmin create '. $this->repo['path']);
-    mkdir($this->xsvn_files['dir']);
+    mkdir($this->repo['xsvn']);
     mkdir($this->repo['wc_path']);
 
-    copy($this->xsvn_src['config'], $this->xsvn_files['config']);
+    copy($this->hooks['config']['src'], $this->hooks['config']['dst']);
 
     // Append simpletest-specific info to the config file.
-    $file = fopen($this->xsvn_files['config'], 'a');
-    fwrite($file, $this->hook_text['config']);
+    $file = fopen($this->hooks['config']['dst'], 'a');
+    fwrite($file, $this->hooks['config']['text']);
     fclose($file);
     $this->repo['created'] = TRUE;
     return;
@@ -150,12 +154,12 @@ class SvnHelper extends DrupalWebTestCase {
     }
 
     // Copy the xsvn files
-    copy($this->xsvn_src[$hook], $this->xsvn_files[$hook]);
+    copy($this->hooks[$hook]['src'], $this->hooks[$hook]['dst']);
 
-    $file = fopen($this->hooks[$hook], 'w');
-    fwrite($file, $this->hook_text[$hook]);
+    $file = fopen($this->hooks[$hook]['svn_file'], 'w');
+    fwrite($file, $this->hooks[$hook]['text']);
     fclose($file);
-    chmod($this->hooks[$hook], 0755);
+    chmod($this->hooks[$hook]['svn_file'], 0755);
 
     return;
   }
