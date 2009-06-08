@@ -76,7 +76,7 @@ class SvnPostCommitTestCase extends SvnHelper {
     $result = $this->wcCommit($message);
 
     $error_pattern = '/Warning: post-commit hook failed \\(exit code (\d+)\\) with output:/';
-    assertTrue(
+    $this->assertTrue(
       preg_match($error_pattern, $result, $matches),
       'post-commit hook fails when no user account exists with the repository.',
       'post-commit hook'
