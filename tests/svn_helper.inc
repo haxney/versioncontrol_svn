@@ -87,6 +87,7 @@ class SvnHelper extends DrupalWebTestCase {
     $this->repo['path']                  = $this->file_path .'/svnrepo';
     $this->repo['url']                   = 'file://'. $this->file_path .'/svnrepo';
     $this->repo['wc_path']               = $this->file_path .'/svnwc';
+    $this->repo['created']               = FALSE;
     $this->base_path                     = dirname($_SERVER['SCRIPT_FILENAME']);
 
     // TODO: Make this more portable
@@ -96,14 +97,14 @@ class SvnHelper extends DrupalWebTestCase {
     $this->hook_text['config']          .= "\$GLOBALS['simpletest_db_prefix'] = '". $GLOBALS['db_prefix'] ."';";
     $this->hooks['pre-commit']           = $this->repo['path'] .'/hooks/pre-commit';
     $module_source                       = realpath(drupal_get_path('module', 'versioncontrol_svn'));
+    $this->xsvn_src['config']            = $module_source .'/xsvn/xsvn-config.php';
     $this->xsvn_src['pre-commit']        = $module_source .'/xsvn/xsvn-pre-commit.php';
-    $this->xsvn_files['config']          = $module_source .'/xsvn/xsvn-config.php';
     $this->xsvn_files['dir']             = $this->repo['path'] .'/hooks/xsvn';
     $this->xsvn_files['pre-commit']      = $this->xsvn_files['dir'] .'/xsvn-pre-commit.php';
     $this->xsvn_files['config']          = $this->xsvn_files['dir'] .'/xsvn-config.php';
 
-    $this->hook_text['pre-commit']       = "#!/bin/sh\n".
-      "php ". $this->xsvn_files['pre-commit'] . $this->xsvn_files['config'] .
+    $this->hook_text['pre-commit']       = "#!/bin/sh\n". "export XDEBUG_CONFIG='remote_port=9001'\n".
+      "php ". $this->xsvn_files['pre-commit'] .' '. $this->xsvn_files['config'] .
       ' $@';
   }
 
@@ -119,16 +120,15 @@ class SvnHelper extends DrupalWebTestCase {
    * Create the subversion repository.
    */
   function initRepo() {
+    shell_exec('svnadmin create '. $this->repo['path']);
     mkdir($this->xsvn_files['dir']);
     mkdir($this->repo['wc_path']);
-
-    shell_exec("svnadmin create $this->repo['path']");
 
     copy($this->xsvn_src['config'], $this->xsvn_files['config']);
 
     // Append simpletest-specific info to the config file.
     $file = fopen($this->xsvn_files['config'], 'a');
-    fwrite($file, $this->config_ext);
+    fwrite($file, $this->hook_text['config']);
     fclose($file);
     $this->repo['created'] = TRUE;
     return;
@@ -145,12 +145,12 @@ class SvnHelper extends DrupalWebTestCase {
    *   Null.
    */
   function initHook($hook) {
-    if (!$this->repop['created']) {
+    if (!$this->repo['created']) {
       throw new Exception(t('Repository has not yet been created.'));
     }
 
     // Copy the xsvn files
-    copy($this->xsvn_src['pre-commit'], $this->xsvn_files['pre-commit']);
+    copy($this->xsvn_src[$hook], $this->xsvn_files[$hook]);
 
     $file = fopen($this->hooks[$hook], 'w');
     fwrite($file, $this->hook_text[$hook]);
@@ -176,7 +176,7 @@ class SvnHelper extends DrupalWebTestCase {
     $edit = array();
     $edit['repo_name'] = $name;
     $edit['root'] = $this->repo['url'];
-    $edit['update_method'] = VERSIONCONTROL_SVN_UPDATE_XSVN;
+    $edit['repository_information][update_method'] = VERSIONCONTROL_SVN_UPDATE_XSVN;
     $this->drupalPost($menu_path, $edit, t('Save repository'));
     $repo = array_shift(versioncontrol_get_repositories(array(
                 'names' => array($edit['repo_name'])
@@ -204,7 +204,8 @@ class SvnHelper extends DrupalWebTestCase {
    */
   function wcCheckOut() {
     chdir($this->file_path);
-    return shell_exec("svn checkout $this->repo['url'] $this->repo['wc_path']");
+    $format = 'svn checkout %s %s';
+    return shell_exec(sprintf($format, $this->repo['url'], $this->repo['wc_path']));
   }
 
   /**
@@ -242,7 +243,7 @@ class SvnHelper extends DrupalWebTestCase {
       t('Make sure a log message is found.'),
       t('operation log')
     );
-    $desc = array_shift($this->elements->xpath("//div[class='description']/pre"));
+    $desc = $this->elements->xpath("//div[class='description']/pre");
     $this->assertEqual(
       $desc,
       $operation['message'],
