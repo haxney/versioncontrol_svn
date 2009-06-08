@@ -93,7 +93,7 @@ class SvnHelper extends DrupalWebTestCase {
     $this->server_user                   = $_ENV['APACHE_RUN_USER'];
 
     $this->hook_text['config']           = "\$xsvn['drupal_path'] = '". $this->base_path ."';\n";
-    $this->hook_text['config']         . = "\$GLOBALS['simpletest_db_prefix'] = '". $GLOBALS['db_prefix'] ."';";
+    $this->hook_text['config']          .= "\$GLOBALS['simpletest_db_prefix'] = '". $GLOBALS['db_prefix'] ."';";
     $this->hooks['pre-commit']           = $this->repo['path'] .'/hooks/pre-commit';
     $module_source                       = realpath(drupal_get_path('module', 'versioncontrol_svn'));
     $this->xsvn_src['pre-commit']        = $module_source .'/xsvn/xsvn-pre-commit.php';
@@ -169,8 +169,10 @@ class SvnHelper extends DrupalWebTestCase {
    * @return
    *   The repository object.
    */
-  function initDrupalRepo($name) {
+  function initDrupalRepo() {
     $menu_path = 'admin/project/versioncontrol-repositories/add-svn';
+    $this->repo['name'] = $this->randomName();
+
     $edit = array();
     $edit['repo_name'] = $name;
     $edit['root'] = $this->repo['url'];
@@ -180,7 +182,19 @@ class SvnHelper extends DrupalWebTestCase {
                 'names' => array($edit['repo_name'])
               )));
     $this->repo['id'] = $repo['repo_id'];
+
     return $repo;
+  }
+
+  /**
+   * Create an SVN account for the user with the given uid.
+   */
+  function initSvnAccount($uid, $username) {
+    $menu_path = 'versioncontrol/register/'. $uid . '/'. $this->repo['id'];
+    $edit = array();
+    $edit['account_name'] = $username;
+
+    $this->drupalPost($menu_path, $edit, t('Create Subversion account'));
   }
 
   /**

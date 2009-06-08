@@ -27,7 +27,7 @@ class SvnPostCommitTestCase extends SvnHelper {
   /**
    * Load the commitlog module.
    */
-  public static function setUp() {
+  public function setUp() {
     parent::setUp('commitlog');
   }
 
@@ -71,7 +71,7 @@ class SvnPostCommitTestCase extends SvnHelper {
 
     $user = $this->drupalCreateUser(array('administer version control systems'));
     $this->drupalLogin($user);
-    $this->initDrupalRepo($name);
+    $this->initDrupalRepo();
 
     $result = $this->wcCommit($message);
 
@@ -104,8 +104,7 @@ class SvnPostCommitTestCase extends SvnHelper {
     $user = $this->drupalCreateUser(array('administer version control systems'));
     $this->drupalLogin($user);
 
-    $repo_name = $this->randomName();
-    $this->initDrupalRepo($repo_name)
+    $this->initDrupalRepo();
 
     $menu_path = "versioncontrol/register/$user->uid/". $this->repo['id'];
     $edit = array();
