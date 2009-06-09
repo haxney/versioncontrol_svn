@@ -46,11 +46,7 @@ function xsvn_init($argc, $argv) {
   include_once $config_file;
   xsvn_bootstrap($xsvn);
 
-  require_once(drupal_get_path('module', 'versioncontrol_svn') .'/new_svnlib/svn.php');
-  $repo = new SvnRepository('file://'. $repo);
-  $log = $repo->svn('log');
-  $output = $log->xml()->revision(intval($rev))->execute();
-  $message = $output->log->msg;
+  $message = shell_exec("svnlook propget -r $rev --revprop $repo svn:log");
 
   $username    = xsvn_get_commit_author($rev, $repo);
   $item_paths  = xsvn_get_commit_files($rev, $repo);
