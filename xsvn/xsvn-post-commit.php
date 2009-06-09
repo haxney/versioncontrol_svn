@@ -44,6 +44,13 @@ function xsvn_init($argc, $argv) {
     exit(4);
   }
   include_once $config_file;
+  xsvn_bootstrap($xsvn);
+
+  require_once(drupal_get_path('module', 'versioncontrol_svn') .'/new_svnlib/svn.php');
+  $repo = new SvnRepository('file://'. $repo);
+  $log = $repo->svn('log');
+  $output = $log->xml()->revision(intval($rev))->execute();
+  $message = $output->log->msg;
 
   $username    = xsvn_get_commit_author($rev, $repo);
   $item_paths  = xsvn_get_commit_files($rev, $repo);
@@ -66,9 +73,9 @@ function xsvn_init($argc, $argv) {
   $operation = versioncontrol_insert_operation($operation, $operation_items);
 
   if (!empty($operation)) {
-    fwrite(STDERR, t("Recorded as commit !id.\n", array(
+    fwrite(STDERR, t('Recorded as commit !id.', array(
           '!id' => versioncontrol_format_operation_revision_identifier($operation),
-        )));
+        )) ."\n");
   }
 }
 
