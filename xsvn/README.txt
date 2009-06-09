@@ -40,9 +40,10 @@ xsvn-start-commit.php
 --------------------
 
   TODO: Currently unused. This one can only check the user name and the
-  repository. Could be used as a speedup for commit access checking: it could be
-  tested whether a user has access to the repository at all, though this would
-  be redundant for sites with a small number of repositories (like drupal.org).
+        repository. Could be used as a speedup for commit access checking: it
+        could be tested whether a user has access to the repository at all,
+        though this would be redundant for sites with a small number of
+        repositories (like drupal.org).
 
 #!/bin/sh
 php [path_to_svn]/hooks/xsvn/xsvn-start-commit.php [path_to_svn]/hooks/xsvn/xsvn-config.php
@@ -76,7 +77,7 @@ xsvn-pre-revprop-change.php
 --------------------
 
   TODO: Currently unused. By default, SVN disallows revision property changes
-  unless enabled with this hook.
+        unless enabled with this hook.
 
 #!/bin/sh
 php [path_to_svn]/hooks/xsvn/xsvn-pre-revprop-change.php [path_to_svn]/hooks/xsvn/xsvn-config.php
