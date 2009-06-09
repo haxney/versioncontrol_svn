@@ -1,0 +1,3 @@
+[submodule "svnlib"]
+	path = svnlib
+	url = git://github.com/sdboyer/svnlib.git
