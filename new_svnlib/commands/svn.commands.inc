@@ -83,7 +83,7 @@ abstract class SvnCommand implements CLICommand {
 
   public function __construct(SvnCommandConfig $config, $defaults = TRUE) {
     $this->config = $config;
-    
+
     // Set up the cmdSwitches array for use.
     $this->setSwitches();
 
@@ -206,7 +206,7 @@ abstract class SvnCommand implements CLICommand {
   /**
    * Flush the object of its internal data and state, readying it for a new
    * command to be run.
-   * 
+   *
    * This method can safely be called regardless of whether or not execute() has
    * been called with the current object.
    *
@@ -324,6 +324,17 @@ abstract class SvnCommand implements CLICommand {
    */
   public function configDir($dir) {
     $this->cmdOpts[self::CONFIG_DIR] = new SvnOptConfigDir($this, $dir);
+    return $this;
+  }
+
+  /**
+   * Pass a message to the command.
+   *
+   * @param string $msg
+   * @return SvnCommand $this
+   */
+  public function message($msg) {
+    $this->cmdOpts[self::MESSAGE] = new SvnOptMessage($this, $msg);
     return $this;
   }
 
@@ -536,7 +547,7 @@ abstract class SvnCommand implements CLICommand {
       $opts[$arg->getShellString()] = $arg->getOrdinal();
     }
   }
-  
+
   /**
    *
    * @param string $target
@@ -581,7 +592,7 @@ abstract class SvnCommand implements CLICommand {
 abstract class SvnWrite extends SvnCommand {
 
   public static $operatesOnRepositories = FALSE;
-    
+
   public function dryRun($arg = TRUE) {
     $this->fiddleSwitch($arg, self::DRY_RUN);
     return $this;
@@ -851,7 +862,7 @@ class SvnList extends SvnRead {
 
 class SvnStatus extends SvnRead {
   const SHOW_UPDATES = 0x20000;
-  
+
   protected $command = 'status';
 
   public function setSwitches() {
