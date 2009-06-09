@@ -184,7 +184,7 @@ function _versioncontrol_svn_init_svnlib(&$repository) {
   }
 
   if (!class_exists('SvnInstance')) {
-    require_once(drupal_get_path('module', 'versioncontrol_svn') .'/new_svnlib/svn.php');
+    require_once(drupal_get_path('module', 'versioncontrol_svn') .'/svnlib/svn.php');
   }
 
   $repository['repo'] = &svnlib_get_repository($repository['root']);
